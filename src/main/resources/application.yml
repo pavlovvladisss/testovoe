@@ -7,11 +7,11 @@ spring:
     username: ${DB_USERNAME:wallet_user}
     password: ${DB_PASSWORD:wallet_password}
     hikari:
-      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
-      minimum-idle: ${DB_MIN_IDLE:5}
-      connection-timeout: ${DB_CONN_TIMEOUT:30000}
-      max-lifetime: ${DB_MAX_LIFETIME:1800000}
-      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:50}
+      minimum-idle: ${DB_MIN_IDLE:10}
+      connection-timeout: ${DB_CONN_TIMEOUT:60000}
+      max-lifetime: ${DB_MAX_LIFETIME:20000}
+      idle-timeout: ${DB_IDLE_TIMEOUT:30000}
 
   jpa:
     hibernate:
@@ -27,6 +27,7 @@ spring:
   liquibase:
     change-log: classpath:/db/changelog/db.changelog-master.yaml
     enabled: true
+    default-schema: public
 
 server:
   port: ${SERVER_PORT:8080}
@@ -49,8 +50,7 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
-app:
-  wallet:
-    max-concurrent-operations: ${MAX_CONCURRENT_OPERATIONS:50}
-    lock-timeout-seconds: ${LOCK_TIMEOUT_SECONDS:5}
-    transaction-timeout-seconds: ${TRANSACTION_TIMEOUT_SECONDS:10}
+wallet:
+  cache:
+    sync-interval-ms: 5000
+    operations-sync-interval-ms: 1000

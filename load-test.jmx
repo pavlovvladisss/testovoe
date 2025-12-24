@@ -1,76 +1,232 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.2">
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6">
+<hashTree>
+<TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="UUID Wallet Concurrency Test" enabled="true">
+  <stringProp name="TestPlan.comments">Тест конкурентного доступа к кошельку с UUID</stringProp>
+  <boolProp name="TestPlan.functional_mode">false</boolProp>
+  <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+  <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+  <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+    <collectionProp name="Arguments.arguments">
+      <elementProp name="baseUrl" elementType="Argument">
+        <stringProp name="Argument.name">baseUrl</stringProp>
+        <stringProp name="Argument.value">http://localhost:8080</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+      <elementProp name="walletId" elementType="Argument">
+        <stringProp name="Argument.name">walletId</stringProp>
+        <stringProp name="Argument.value">a1b2c3d4-e5f6-7890-abcd-ef1234567890</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+      <elementProp name="initialAmount" elementType="Argument">
+        <stringProp name="Argument.name">initialAmount</stringProp>
+        <stringProp name="Argument.value">100000000</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+      <elementProp name="threadCount" elementType="Argument">
+        <stringProp name="Argument.name">threadCount</stringProp>
+        <stringProp name="Argument.value">50</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+      <elementProp name="testDuration" elementType="Argument">
+        <stringProp name="Argument.name">testDuration</stringProp>
+        <stringProp name="Argument.value">20</stringProp>
+        <stringProp name="Argument.metadata">=</stringProp>
+      </elementProp>
+    </collectionProp>
+  </elementProp>
+</TestPlan>
+<hashTree>
+
+<!-- 1. Создание кошелька с начальным балансом -->
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="01. Initial Deposit" enabled="true">
+  <stringProp name="ThreadGroup.on_sample_error">stopthread</stringProp>
+  <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+    <boolProp name="LoopController.continue_forever">false</boolProp>
+    <intProp name="LoopController.loops">1</intProp>
+  </elementProp>
+  <stringProp name="ThreadGroup.num_threads">1</stringProp>
+  <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+  <boolProp name="ThreadGroup.scheduler">false</boolProp>
+</ThreadGroup>
+<hashTree>
+  <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST Initial Deposit" enabled="true">
+    <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+    <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+      <collectionProp name="Arguments.arguments">
+        <elementProp name="" elementType="HTTPArgument">
+          <boolProp name="HTTPArgument.always_encode">false</boolProp>
+          <stringProp name="Argument.value">{
+  "walletId": "${walletId}",
+  "operationType": "DEPOSIT",
+  "amount": ${initialAmount}
+}</stringProp>
+          <stringProp name="Argument.metadata">=</stringProp>
+        </elementProp>
+      </collectionProp>
+    </elementProp>
+    <stringProp name="HTTPSampler.domain">localhost</stringProp>
+    <stringProp name="HTTPSampler.port">8080</stringProp>
+    <stringProp name="HTTPSampler.protocol">http</stringProp>
+    <stringProp name="HTTPSampler.path">/api/v1/wallets</stringProp>
+    <stringProp name="HTTPSampler.method">POST</stringProp>
+    <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+    <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+  </HTTPSamplerProxy>
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Wallet Service Load Test" enabled="true">
-      <stringProp name="TestPlan.comments"></stringProp>
-      <boolProp name="TestPlan.functional_mode">false</boolProp>
-      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
-      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
-      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+    <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+      <collectionProp name="HeaderManager.headers">
+        <elementProp name="" elementType="Header">
+          <stringProp name="Header.name">Content-Type</stringProp>
+          <stringProp name="Header.value">application/json</stringProp>
+        </elementProp>
+      </collectionProp>
+    </HeaderManager>
+    <hashTree/>
+  </hashTree>
+  <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Wait 2s" enabled="true">
+    <stringProp name="ConstantTimer.delay">2000</stringProp>
+  </ConstantTimer>
+  <hashTree/>
+</hashTree>
+
+<!-- 2. Конкурентные операции (100 потоков) -->
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="02. Concurrent Operations (15 threads)" enabled="true">
+  <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+  <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+    <boolProp name="LoopController.continue_forever">true</boolProp>
+    <intProp name="LoopController.loops">-1</intProp>
+  </elementProp>
+  <stringProp name="ThreadGroup.num_threads">${threadCount}</stringProp>
+  <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+  <boolProp name="ThreadGroup.scheduler">true</boolProp>
+  <stringProp name="ThreadGroup.duration">${testDuration}</stringProp>
+</ThreadGroup>
+<hashTree>
+  <!-- Случайный выбор операции: 50/50 депозит/снятие -->
+  <RandomController guiclass="RandomControllerGui" testclass="RandomController" testname="Random Operation" enabled="true">
+    <boolProp name="RandomController.style">1</boolProp>
+  </RandomController>
+  <hashTree>
+    <!-- Депозит -->
+    <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST Deposit 50-189" enabled="true">
+      <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+      <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
         <collectionProp name="Arguments.arguments">
-          <elementProp name="baseUrl" elementType="Argument">
-            <stringProp name="Argument.name">baseUrl</stringProp>
-            <stringProp name="Argument.value">http://localhost:8080</stringProp>
-            <stringProp name="Argument.metadata">=</stringProp>
-          </elementProp>
-          <elementProp name="walletId" elementType="Argument">
-            <stringProp name="Argument.name">walletId</stringProp>
-            <stringProp name="Argument.value">f47ac10b-58cc-4372-a567-0e02b2c3d479</stringProp>
+          <elementProp name="" elementType="HTTPArgument">
+            <boolProp name="HTTPArgument.always_encode">false</boolProp>
+            <stringProp name="Argument.value">{
+  "walletId": "${walletId}",
+  "operationType": "DEPOSIT",
+  "amount": ${__Random(50,189)}
+}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
       </elementProp>
-    </TestPlan>
+      <stringProp name="HTTPSampler.domain">localhost</stringProp>
+      <stringProp name="HTTPSampler.port">8080</stringProp>
+      <stringProp name="HTTPSampler.protocol">http</stringProp>
+      <stringProp name="HTTPSampler.path">/api/v1/wallets</stringProp>
+      <stringProp name="HTTPSampler.method">POST</stringProp>
+      <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+      <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+    </HTTPSamplerProxy>
     <hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Wallet Operations" enabled="true">
-        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
-          <boolProp name="LoopController.continue_forever">false</boolProp>
-          <intProp name="LoopController.loops">-1</intProp>
-        </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
-        <boolProp name="ThreadGroup.scheduler">true</boolProp>
-        <stringProp name="ThreadGroup.duration">300</stringProp>
-        <stringProp name="ThreadGroup.delay"></stringProp>
-      </ThreadGroup>
-      <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST Deposit" enabled="true">
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
-            <collectionProp name="Arguments.arguments">
-              <elementProp name="" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">{&quot;walletId&quot;:&quot;${walletId}&quot;,&quot;operationType&quot;:&quot;DEPOSIT&quot;,&quot;amount&quot;:100}</stringProp>
-                <stringProp name="Argument.metadata">=</stringProp>
-              </elementProp>
-            </collectionProp>
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
           </elementProp>
-          <stringProp name="HTTPSampler.domain">${baseUrl}</stringProp>
-          <stringProp name="HTTPSampler.port"></stringProp>
-          <stringProp name="HTTPSampler.protocol"></stringProp>
-          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-          <stringProp name="HTTPSampler.path">/api/v1/wallets</stringProp>
-          <stringProp name="HTTPSampler.method">POST</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
-          <stringProp name="HTTPSampler.connect_timeout"></stringProp>
-          <stringProp name="HTTPSampler.response_timeout"></stringProp>
-        </HTTPSamplerProxy>
-        <hashTree>
-          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
-            <collectionProp name="HeaderManager.headers">
-              <elementProp name="" elementType="Header">
-                <stringProp name="Header.name">Content-Type</stringProp>
-                <stringProp name="Header.value">application/json</stringProp>
-              </elementProp>
-            </collectionProp>
-          </HeaderManager>
-          <hashTree/>
-        </hashTree>
-      </hashTree>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+      <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Status 200" enabled="true">
+        <collectionProp name="Assertion.test_strings">
+          <stringProp name="49586">200</stringProp>
+        </collectionProp>
+        <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+        <boolProp name="Assertion.assume_success">false</boolProp>
+        <intProp name="Assertion.test_type">16</intProp>
+      </ResponseAssertion>
+      <hashTree/>
+    </hashTree>
+
+    <!-- Снятие -->
+    <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST Withdraw 50-189" enabled="true">
+      <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+      <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="" elementType="HTTPArgument">
+            <boolProp name="HTTPArgument.always_encode">false</boolProp>
+            <stringProp name="Argument.value">{
+  "walletId": "${walletId}",
+  "operationType": "WITHDRAW",
+  "amount": ${__Random(50,189)}
+}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <stringProp name="HTTPSampler.domain">localhost</stringProp>
+      <stringProp name="HTTPSampler.port">8080</stringProp>
+      <stringProp name="HTTPSampler.protocol">http</stringProp>
+      <stringProp name="HTTPSampler.path">/api/v1/wallets</stringProp>
+      <stringProp name="HTTPSampler.method">POST</stringProp>
+      <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+      <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+    </HTTPSamplerProxy>
+    <hashTree>
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+      <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Status 200 or 422" enabled="true">
+        <collectionProp name="Assertion.test_strings">
+          <stringProp name="49586">200</stringProp>
+          <stringProp name="49587">422</stringProp>
+        </collectionProp>
+        <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+        <boolProp name="Assertion.assume_success">false</boolProp>
+        <intProp name="Assertion.test_type">16</intProp>
+      </ResponseAssertion>
+      <hashTree/>
     </hashTree>
   </hashTree>
+
+  <!-- Регулировка RPS: 10ms между запросами (~100 RPS на поток) -->
+  <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="10ms Delay" enabled="true">
+    <stringProp name="ConstantTimer.delay">10</stringProp>
+  </ConstantTimer>
+  <hashTree/>
+</hashTree>
+
+<!-- Сбор результатов -->
+<ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report" enabled="true">
+  <boolProp name="ResultCollector.error_logging">false</boolProp>
+  <objProp>
+    <name>saveConfig</name>
+    <value class="SampleSaveConfiguration">
+      <time>true</time>
+      <latency>true</latency>
+      <timestamp>true</timestamp>
+      <success>true</success>
+      <label>true</label>
+      <code>true</code>
+      <message>true</message>
+      <threadName>true</threadName>
+    </value>
+  </objProp>
+  <stringProp name="filename">results.csv</stringProp>
+</ResultCollector>
+<hashTree/>
+
+</hashTree>
+</hashTree>
 </jmeterTestPlan>
