@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-indexes
+      author: wallet-service
+      changes:
+        - createIndex:
+            tableName: wallet
+            indexName: idx_wallet_updated_at
+            columns:
+              - column:
+                  name: updated_at
+                  descending: true
+        - createIndex:
+            tableName: wallet_operation
+            indexName: idx_wallet_operation_wallet_id
+            columns:
+              - column:
+                  name: wallet_id
+        - createIndex:
+            tableName: wallet_operation
+            indexName: idx_wallet_operation_created_at
+            columns:
+              - column:
+                  name: created_at
+                  descending: true
+        - createIndex:
+            tableName: wallet_operation
+            indexName: idx_wallet_operation_status
+            columns:
+              - column:
+                  name: status

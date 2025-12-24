@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wallet-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-wallet_db}
+      POSTGRES_USER: ${DB_USERNAME:-wallet_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wallet_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - wallet-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-wallet_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  wallet-service:
+    build: .
+    container_name: wallet-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-wallet_db}
+      DB_USERNAME: ${DB_USERNAME:-wallet_user}
+      DB_PASSWORD: ${DB_PASSWORD:-wallet_password}
+      DB_MAX_POOL_SIZE: ${DB_MAX_POOL_SIZE:-50}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
+      MAX_CONCURRENT_OPERATIONS: ${MAX_CONCURRENT_OPERATIONS:-100}
+    networks:
+      - wallet-network
+    deploy:
+      resources:
+        limits:
+          memory: ${SERVICE_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${SERVICE_MEMORY_RESERVATION:-256M}
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: wallet-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - wallet-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wallet-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - wallet-network
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  wallet-network:
+    driver: bridge
